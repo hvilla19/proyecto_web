@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { Loader2, X } from "lucide-react";
 
 interface Categoria {
   id: string;
@@ -50,6 +51,24 @@ export default function CategoriaModal({
     setGuardando(false);
   }, [abierto, categoria]);
 
+  useEffect(() => {
+    if (!abierto) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !guardando) {
+        handleCerrar();
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [abierto, guardando]);
+
   if (!abierto) {
     return null;
   }
@@ -59,8 +78,12 @@ export default function CategoriaModal({
 
     setError("");
 
-    if (!codigo.trim() || !nombre.trim()) {
-      setError("El código y el nombre son obligatorios");
+    const codigoLimpio = codigo.trim();
+    const nombreLimpio = nombre.trim();
+    const descripcionLimpia = descripcion.trim();
+
+    if (!codigoLimpio || !nombreLimpio) {
+      setError("El código y el nombre son obligatorios.");
       return;
     }
 
@@ -77,9 +100,9 @@ export default function CategoriaModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          codigo: codigo.trim(),
-          nombre: nombre.trim(),
-          descripcion: descripcion.trim(),
+          codigo: codigoLimpio,
+          nombre: nombreLimpio,
+          descripcion: descripcionLimpia,
         }),
       });
 
@@ -89,8 +112,8 @@ export default function CategoriaModal({
         throw new Error(
           result.message ||
             (editando
-              ? "No se pudo actualizar la categoría"
-              : "No se pudo crear la categoría")
+              ? "No se pudo actualizar la categoría."
+              : "No se pudo crear la categoría.")
         );
       }
 
@@ -112,8 +135,8 @@ export default function CategoriaModal({
         error instanceof Error
           ? error.message
           : editando
-            ? "No se pudo actualizar la categoría"
-            : "No se pudo crear la categoría"
+            ? "No se pudo actualizar la categoría."
+            : "No se pudo crear la categoría."
       );
     } finally {
       setGuardando(false);
@@ -133,16 +156,29 @@ export default function CategoriaModal({
     onCerrar();
   }
 
+  function handleOverlayClick() {
+    if (!guardando) {
+      handleCerrar();
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]"
+      onMouseDown={handleOverlayClick}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/20"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {/* Encabezado */}
+        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold tracking-tight text-violet-800">
               {editando ? "Editar categoría" : "Nueva categoría"}
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-slate-400">
               {editando
                 ? "Modifica los datos de la categoría."
                 : "Registra una nueva categoría para tus productos."}
@@ -153,26 +189,33 @@ export default function CategoriaModal({
             type="button"
             onClick={handleCerrar}
             disabled={guardando}
-            className="rounded-lg px-2 py-1 text-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ×
+            <X className="h-4 w-4" />
           </button>
         </div>
 
+        {/* Formulario */}
         <form onSubmit={handleSubmit}>
           <div className="space-y-5 px-6 py-6">
+            {/* Error */}
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm text-red-600">
+              <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-500" />
+
+                <p className="text-sm leading-5 text-red-600">
                   {error}
                 </p>
               </div>
             )}
 
+            {/* Código */}
             <div>
               <label
                 htmlFor="codigo"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-slate-700"
               >
                 Código
               </label>
@@ -185,14 +228,15 @@ export default function CategoriaModal({
                 placeholder="Ej. CAT-003"
                 disabled={guardando}
                 autoFocus
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-300 focus:ring-4 focus:ring-violet-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
               />
             </div>
 
+            {/* Nombre */}
             <div>
               <label
                 htmlFor="nombre"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-slate-700"
               >
                 Nombre
               </label>
@@ -204,14 +248,15 @@ export default function CategoriaModal({
                 onChange={(event) => setNombre(event.target.value)}
                 placeholder="Ej. Herramientas eléctricas"
                 disabled={guardando}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-300 focus:ring-4 focus:ring-violet-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
               />
             </div>
 
+            {/* Descripción */}
             <div>
               <label
                 htmlFor="descripcion"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-slate-700"
               >
                 Descripción
               </label>
@@ -223,17 +268,18 @@ export default function CategoriaModal({
                 onChange={(event) => setDescripcion(event.target.value)}
                 placeholder="Descripción de la categoría..."
                 disabled={guardando}
-                className="w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-100 disabled:bg-gray-100"
+                className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-300 focus:ring-4 focus:ring-violet-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          {/* Acciones */}
+          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
             <button
               type="button"
               onClick={handleCerrar}
               disabled={guardando}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -241,8 +287,12 @@ export default function CategoriaModal({
             <button
               type="submit"
               disabled={guardando}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-violet-500/20 transition hover:shadow-md hover:shadow-violet-500/25 focus:outline-none focus:ring-4 focus:ring-violet-500/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
+              {guardando && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+
               {guardando
                 ? "Guardando..."
                 : editando
