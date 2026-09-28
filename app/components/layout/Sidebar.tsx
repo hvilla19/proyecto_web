@@ -35,13 +35,18 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const [maestrosOpen, setMaestrosOpen] = useState(
-    pathname.startsWith("/categorias")
+    pathname.startsWith("/categorias") ||
+      pathname.startsWith("/unidades-medida")
   );
-
+  
   const [inventarioOpen, setInventarioOpen] = useState(false);
-
+  
   const categoriasActiva = pathname === "/categorias";
-  const maestrosActivo = pathname.startsWith("/categorias");
+  const unidadesMedidaActiva = pathname === "/unidades-medida";
+  
+  const maestrosActivo =
+    pathname.startsWith("/categorias") ||
+    pathname.startsWith("/unidades-medida");
 
   return (
     <aside
@@ -199,14 +204,24 @@ export default function Sidebar({
               </button>
 
               {/* Unidades de medida */}
-              <button
-                type="button"
-                className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+              <Link
+                href="/unidades-medida"
+                className={`group flex items-center gap-3 rounded-lg border-l-2 px-3 py-2 text-sm font-medium transition ${
+                  unidadesMedidaActiva
+                    ? "border-violet-400 bg-violet-500/10 text-violet-200"
+                    : "border-transparent text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                }`}
               >
-                <Ruler className="h-4 w-4 text-slate-500 transition group-hover:text-slate-300" />
+                <Ruler
+                  className={`h-4 w-4 transition ${
+                    unidadesMedidaActiva
+                      ? "text-violet-300"
+                      : "text-slate-500 group-hover:text-slate-300"
+                  }`}
+                />
 
                 <span>Unidades de medida</span>
-              </button>
+              </Link>
             </div>
           )}
         </div>

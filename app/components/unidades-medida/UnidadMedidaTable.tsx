@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -7,114 +7,118 @@ import {
   Trash2,
   SearchX,
 } from "lucide-react";
-import CategoriaToolbar from "./CategoriaToolbar";
-import CategoriaModal from "./CategoriaModal";
-import CategoriaConfirmModal from "./CategoriaConfirmModal";
+import UnidadMedidaToolbar from "./UnidadMedidaToolbar";
+import UnidadMedidaModal from "./UnidadMedidaModal";
+import UnidadMedidaConfirmModal from "./UnidadMedidaConfirmModal";
 
-interface Categoria {
+interface UnidadMedida {
   id: string;
   codigo: string;
   nombre: string;
-  descripcion: string | null;
+  decimalesPermitidos: number;
   activo: boolean;
 }
 
-export default function CategoriaTable() {
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
+export default function UnidadMedidaTable() {
+  const [unidadesMedida, setUnidadesMedida] = useState<UnidadMedida[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] =
-    useState<Categoria | null>(null);
+  const [unidadSeleccionada, setUnidadSeleccionada] =
+    useState<UnidadMedida | null>(null);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
   const [confirmarEliminacion, setConfirmarEliminacion] =
-    useState<Categoria | null>(null);
+    useState<UnidadMedida | null>(null);
 
   useEffect(() => {
-    async function cargarCategorias() {
+    async function cargarUnidadesMedida() {
       try {
         setCargando(true);
         setError("");
 
-        const response = await fetch("/api/categorias");
+        const response = await fetch("/api/unidades-medida");
         const result = await response.json();
 
         if (!response.ok || !result.ok) {
           throw new Error(
-            result.message || "No se pudieron cargar las categorías"
+            result.message ||
+              "No se pudieron cargar las unidades de medida"
           );
         }
 
-        setCategorias(result.data);
+        setUnidadesMedida(result.data);
       } catch (error) {
-        console.error("Error al cargar categorías:", error);
+        console.error(
+          "Error al cargar unidades de medida:",
+          error
+        );
 
         setError(
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar las categorías"
+            : "No se pudieron cargar las unidades de medida"
         );
       } finally {
         setCargando(false);
       }
     }
 
-    cargarCategorias();
+    cargarUnidadesMedida();
   }, []);
 
-  const categoriasFiltradas = useMemo(() => {
+  const unidadesMedidaFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
 
     if (!texto) {
-      return categorias;
+      return unidadesMedida;
     }
 
-    return categorias.filter((categoria) => {
+    return unidadesMedida.filter((unidad) => {
       return (
-        categoria.codigo.toLowerCase().includes(texto) ||
-        categoria.nombre.toLowerCase().includes(texto)
+        unidad.codigo.toLowerCase().includes(texto) ||
+        unidad.nombre.toLowerCase().includes(texto)
       );
     });
-  }, [categorias, busqueda]);
+  }, [unidadesMedida, busqueda]);
 
-  function abrirNuevaCategoria() {
-    setCategoriaSeleccionada(null);
+  function abrirNuevaUnidadMedida() {
+    setUnidadSeleccionada(null);
     setModalAbierto(true);
   }
 
-  function abrirEditarCategoria(categoria: Categoria) {
-    setCategoriaSeleccionada(categoria);
+  function abrirEditarUnidadMedida(unidad: UnidadMedida) {
+    setUnidadSeleccionada(unidad);
     setModalAbierto(true);
   }
 
   function cerrarModal() {
     setModalAbierto(false);
-    setCategoriaSeleccionada(null);
+    setUnidadSeleccionada(null);
   }
 
-  function guardarCategoria(categoria: Categoria) {
-    setCategorias((categoriasActuales) => {
-      const existe = categoriasActuales.some(
-        (item) => item.id === categoria.id
+  function guardarUnidadMedida(unidad: UnidadMedida) {
+    setUnidadesMedida((unidadesActuales) => {
+      const existe = unidadesActuales.some(
+        (item) => item.id === unidad.id
       );
 
       if (existe) {
-        return categoriasActuales.map((item) =>
-          item.id === categoria.id ? categoria : item
+        return unidadesActuales.map((item) =>
+          item.id === unidad.id ? unidad : item
         );
       }
 
-      return [...categoriasActuales, categoria];
+      return [...unidadesActuales, unidad];
     });
 
     cerrarModal();
   }
 
-  function abrirConfirmacionEliminacion(categoria: Categoria) {
+  function abrirConfirmacionEliminacion(unidad: UnidadMedida) {
     setError("");
-    setConfirmarEliminacion(categoria);
+    setConfirmarEliminacion(unidad);
   }
 
   function cerrarConfirmacionEliminacion() {
@@ -125,41 +129,50 @@ export default function CategoriaTable() {
     setConfirmarEliminacion(null);
   }
 
-  async function eliminarCategoria() {
+  async function eliminarUnidadMedida() {
     if (!confirmarEliminacion) {
       return;
     }
 
-    const categoria = confirmarEliminacion;
+    const unidad = confirmarEliminacion;
 
     try {
-      setEliminandoId(categoria.id);
+      setEliminandoId(unidad.id);
       setError("");
 
-      const response = await fetch(`/api/categorias/${categoria.id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/unidades-medida/${unidad.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
         throw new Error(
-          result.message || "No se pudo eliminar la categoría"
+          result.message ||
+            "No se pudo eliminar la unidad de medida"
         );
       }
 
-      setCategorias((categoriasActuales) =>
-        categoriasActuales.filter((item) => item.id !== categoria.id)
+      setUnidadesMedida((unidadesActuales) =>
+        unidadesActuales.filter(
+          (item) => item.id !== unidad.id
+        )
       );
 
       setConfirmarEliminacion(null);
     } catch (error) {
-      console.error("Error al eliminar categoría:", error);
+      console.error(
+        "Error al eliminar unidad de medida:",
+        error
+      );
 
       setError(
         error instanceof Error
           ? error.message
-          : "No se pudo eliminar la categoría"
+          : "No se pudo eliminar la unidad de medida"
       );
     } finally {
       setEliminandoId(null);
@@ -174,7 +187,7 @@ export default function CategoriaTable() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
 
             <p className="mt-4 text-sm font-medium text-slate-600">
-              Cargando categorías...
+              Cargando unidades de medida...
             </p>
 
             <p className="mt-1 text-xs text-slate-400">
@@ -185,7 +198,7 @@ export default function CategoriaTable() {
       );
     }
 
-    if (categoriasFiltradas.length === 0) {
+    if (unidadesMedidaFiltradas.length === 0) {
       return (
         <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
@@ -193,20 +206,20 @@ export default function CategoriaTable() {
           </div>
 
           <p className="mt-4 text-sm font-semibold text-slate-700">
-            No se encontraron categorías
+            No se encontraron unidades de medida
           </p>
 
           <p className="mt-1 max-w-sm text-sm text-slate-400">
             {busqueda
               ? "Prueba con otro código o nombre."
-              : "Aún no existen categorías registradas."}
+              : "Aún no existen unidades de medida registradas."}
           </p>
         </div>
       );
     }
 
     return (
-      <div className="overflow-x-auto">        
+      <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-indigo-300 bg-gradient-to-br from-indigo-700 to-violet-600">
@@ -214,12 +227,12 @@ export default function CategoriaTable() {
                 Código
               </th>
 
-              <th className="w-56 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
-                Categoría
+              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
+                Unidad
               </th>
 
-              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
-                Descripción
+              <th className="w-40 px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-white">
+                Decimales
               </th>
 
               <th className="w-32 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
@@ -233,41 +246,38 @@ export default function CategoriaTable() {
           </thead>
 
           <tbody className="divide-y divide-slate-100 bg-white">
-            {categoriasFiltradas.map((categoria) => (
+            {unidadesMedidaFiltradas.map((unidad) => (
               <tr
-                key={categoria.id}
+                key={unidad.id}
                 className="group transition-colors hover:bg-slate-50/60"
               >
                 {/* Código */}
                 <td className="px-5 py-2.5">
                   <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-600">
-                    {categoria.codigo}
+                    {unidad.codigo}
                   </span>
                 </td>
 
-                {/* Nombre */}
+                {/* Unidad */}
                 <td className="px-5 py-2.5">
                   <p
                     className="truncate text-sm font-medium text-slate-800"
-                    title={categoria.nombre}
+                    title={unidad.nombre}
                   >
-                    {categoria.nombre}
+                    {unidad.nombre}
                   </p>
                 </td>
 
-                {/* Descripción */}
-                <td className="px-5 py-2.5">
-                  <p
-                    className="truncate text-sm text-slate-500"
-                    title={categoria.descripcion || ""}
-                  >
-                    {categoria.descripcion || "—"}
-                  </p>
+                {/* Decimales */}
+                <td className="px-5 py-2.5 text-center">
+                  <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-slate-50 px-2 py-0.5 font-mono text-xs font-medium text-slate-600">
+                    {unidad.decimalesPermitidos}
+                  </span>
                 </td>
 
                 {/* Estado */}
                 <td className="px-5 py-2.5">
-                  {categoria.activo ? (
+                  {unidad.activo ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Activo
@@ -285,8 +295,10 @@ export default function CategoriaTable() {
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      onClick={() => abrirEditarCategoria(categoria)}
-                      title="Editar categoría"
+                      onClick={() =>
+                        abrirEditarUnidadMedida(unidad)
+                      }
+                      title="Editar unidad de medida"
                       className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                     >
                       <Pencil className="h-4 w-4" />
@@ -295,10 +307,10 @@ export default function CategoriaTable() {
                     <button
                       type="button"
                       onClick={() =>
-                        abrirConfirmacionEliminacion(categoria)
+                        abrirConfirmacionEliminacion(unidad)
                       }
-                      disabled={eliminandoId === categoria.id}
-                      title="Eliminar categoría"
+                      disabled={eliminandoId === unidad.id}
+                      title="Eliminar unidad de medida"
                       className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -315,8 +327,8 @@ export default function CategoriaTable() {
 
   return (
     <div>
-      <CategoriaToolbar
-        total={categoriasFiltradas.length}
+      <UnidadMedidaToolbar
+        total={unidadesMedidaFiltradas.length}
         busqueda={busqueda}
         onBusquedaChange={setBusqueda}
       />
@@ -330,7 +342,9 @@ export default function CategoriaTable() {
               No se pudo completar la operación
             </p>
 
-            <p className="mt-0.5 text-xs text-rose-600">{error}</p>
+            <p className="mt-0.5 text-xs text-rose-600">
+              {error}
+            </p>
           </div>
         </div>
       )}
@@ -339,28 +353,28 @@ export default function CategoriaTable() {
         {contenidoTabla()}
       </div>
 
-      <CategoriaModal
+      <UnidadMedidaModal
         abierto={modalAbierto}
-        categoria={categoriaSeleccionada}
+        unidadMedida={unidadSeleccionada}
         onCerrar={cerrarModal}
-        onGuardar={async (categoria) => {
-          guardarCategoria(categoria);
+        onGuardar={async (unidad) => {
+          guardarUnidadMedida(unidad);
         }}
       />
 
-      <CategoriaConfirmModal
+      <UnidadMedidaConfirmModal
         abierto={confirmarEliminacion !== null}
         nombre={confirmarEliminacion?.nombre || ""}
         eliminando={eliminandoId !== null}
         onCerrar={cerrarConfirmacionEliminacion}
-        onConfirmar={eliminarCategoria}
+        onConfirmar={eliminarUnidadMedida}
       />
 
       <button
         type="button"
-        onClick={abrirNuevaCategoria}
-        title="Nueva categoría"
-        aria-label="Nueva categoría"        
+        onClick={abrirNuevaUnidadMedida}
+        title="Nueva unidad de medida"
+        aria-label="Nueva unidad de medida"
         className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-violet-500/30 transition hover:scale-105 hover:shadow-xl hover:shadow-violet-500/30 focus:outline-none focus:ring-4 focus:ring-violet-500/20"
       >
         <Plus className="h-5 w-5" />
