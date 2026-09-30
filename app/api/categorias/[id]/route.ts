@@ -212,6 +212,26 @@ export async function DELETE(
       );
     }
 
+    // Validar dependencias antes de permitir la desactivación.
+    // Se consideran todos los productos asociados, incluso los inactivos,
+    // para conservar la integridad y trazabilidad del sistema.
+    const productosAsociados = await prisma.producto.count({
+      where: {
+        categoriaId,
+      },
+    });
+
+    if (productosAsociados > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "No se puede desactivar la categoria porque tiene productos asociados. Debe conservarse para garantizar la integridad y trazabilidad del sistema.",
+        },
+        { status: 409 }
+      );
+    }
+
     const categoria = await prisma.categoria.update({
       where: {
         id: categoriaId,
@@ -248,6 +268,7 @@ export async function DELETE(
     );
   }
 }
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

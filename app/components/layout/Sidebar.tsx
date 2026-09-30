@@ -36,17 +36,20 @@ export default function Sidebar({
 
   const [maestrosOpen, setMaestrosOpen] = useState(
     pathname.startsWith("/categorias") ||
-      pathname.startsWith("/unidades-medida")
+    pathname.startsWith("/productos") ||
+    pathname.startsWith("/unidades-medida")
   );
   
   const [inventarioOpen, setInventarioOpen] = useState(false);
   
   const categoriasActiva = pathname === "/categorias";
+  const productosActiva = pathname === "/productos";
   const unidadesMedidaActiva = pathname === "/unidades-medida";
-  
+
   const maestrosActivo =
-    pathname.startsWith("/categorias") ||
-    pathname.startsWith("/unidades-medida");
+  pathname.startsWith("/categorias") ||
+  pathname.startsWith("/productos") ||
+  pathname.startsWith("/unidades-medida");
 
   return (
     <aside
@@ -174,14 +177,24 @@ export default function Sidebar({
               </Link>
 
               {/* Productos */}
-              <button
-                type="button"
-                className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+              <Link
+                href="/productos"
+                className={`group flex items-center gap-3 rounded-lg border-l-2 px-3 py-2 text-sm font-medium transition ${
+                  productosActiva
+                    ? "border-violet-400 bg-violet-500/10 text-violet-200"
+                    : "border-transparent text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                }`}
               >
-                <Package className="h-4 w-4 text-slate-500 transition group-hover:text-slate-300" />
+                <Package
+                  className={`h-4 w-4 transition ${
+                    productosActiva
+                      ? "text-violet-300"
+                      : "text-slate-500 group-hover:text-slate-300"
+                  }`}
+                />
 
                 <span>Productos</span>
-              </button>
+              </Link>
 
               {/* Almacenes */}
               <button

@@ -227,6 +227,25 @@ export async function DELETE(
       );
     }
 
+    const productosAsociados = await prisma.producto.count({
+      where: {
+        unidadMedidaId,
+      },
+    });
+    console.log("DEBUG unidadMedidaId:", unidadMedidaId.toString());
+    console.log("DEBUG productosAsociados:", productosAsociados);
+
+    if (productosAsociados > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "No se puede desactivar la unidad de medida porque tiene productos asociados. Debe conservarse para garantizar la integridad y trazabilidad del sistema.",
+        },
+        { status: 409 }
+      );
+    }
+
     const unidadMedida = await prisma.unidad_medida.update({
       where: {
         id: unidadMedidaId,
