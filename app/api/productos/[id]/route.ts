@@ -168,6 +168,8 @@ export async function PUT(
     }
 
     const productoId = BigInt(id);
+    const nuevaCategoriaId = BigInt(String(categoriaId));
+    const nuevaUnidadMedidaId = BigInt(String(unidadMedidaId));
 
     const productoExistente = await prisma.producto.findUnique({
       where: {
@@ -182,6 +184,68 @@ export async function PUT(
           message: "Producto no encontrado",
         },
         { status: 404 }
+      );
+    }
+
+    /*
+     * Las dependencias operativas se utilizan para determinar
+     * si podemos cambiar las relaciones estructurales del producto.
+     *
+     * producto_almacen:
+     * - Representa la relación del producto con uno o más almacenes.
+     * - También es la relación desde la cual cuelgan los movimientos
+     *   de inventario.
+     *
+     * transferencia_detalle:
+     * - Representa el uso del producto en transferencias.
+     */
+    const [productoAlmacenCount, transferenciaDetalleCount] =
+      await Promise.all([
+        prisma.producto_almacen.count({
+          where: {
+            productoId,
+          },
+        }),
+
+        prisma.transferencia_detalle.count({
+          where: {
+            productoId,
+          },
+        }),
+      ]);
+
+    const tieneDependencias =
+      productoAlmacenCount > 0 || transferenciaDetalleCount > 0;
+
+    const categoriaCambio =
+      productoExistente.categoriaId !== nuevaCategoriaId;
+
+    const unidadMedidaCambio =
+      productoExistente.unidadMedidaId !== nuevaUnidadMedidaId;
+
+    /*
+     * Si existen dependencias operativas, no permitimos cambiar
+     * las relaciones estructurales del producto.
+     *
+     * Sí permitimos cambiar:
+     * - codigo
+     * - nombre
+     * - descripcion
+     *
+     * porque esas modificaciones no rompen las relaciones
+     * internas que utilizan el ID del producto.
+     */
+    if (
+      tieneDependencias &&
+      (categoriaCambio || unidadMedidaCambio)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "No se puede cambiar la categoria o la unidad de medida del producto porque tiene dependencias o movimientos relacionados. Debe conservarse la relacion actual para garantizar la integridad y trazabilidad del sistema.",
+        },
+        { status: 409 }
       );
     }
 
@@ -206,7 +270,7 @@ export async function PUT(
 
     const categoria = await prisma.categoria.findUnique({
       where: {
-        id: BigInt(String(categoriaId)),
+        id: nuevaCategoriaId,
       },
       select: {
         id: true,
@@ -238,7 +302,7 @@ export async function PUT(
 
     const unidadMedida = await prisma.unidad_medida.findUnique({
       where: {
-        id: BigInt(String(unidadMedidaId)),
+        id: nuevaUnidadMedidaId,
       },
       select: {
         id: true,
@@ -270,42 +334,76 @@ export async function PUT(
       );
     }
 
-    const producto = await prisma.producto.update({
-      where: {
-        id: productoId,
-      },
-      data: {
-        codigo,
-        nombre,
-        descripcion,
-        categoriaId: categoria.id,
-        unidadMedidaId: unidadMedida.id,
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        codigo: true,
-        nombre: true,
-        descripcion: true,
-        categoriaId: true,
-        unidadMedidaId: true,
-        activo: true,
-        categoria: {
-          select: {
-            id: true,
-            codigo: true,
-            nombre: true,
+    const codigoCambio =
+      productoExistente.codigo !== codigo;
+
+    /*
+     * Utilizamos una transaccion porque el cambio del producto
+     * y el registro del historial deben ejecutarse juntos.
+     *
+     * Si cualquiera de las dos operaciones falla, ninguna queda
+     * aplicada parcialmente.
+     */
+    const producto = await prisma.$transaction(async (tx) => {
+      const productoActualizado = await tx.producto.update({
+        where: {
+          id: productoId,
+        },
+        data: {
+          codigo,
+          nombre,
+          descripcion,
+          categoriaId: categoria.id,
+          unidadMedidaId: unidadMedida.id,
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          codigo: true,
+          nombre: true,
+          descripcion: true,
+          categoriaId: true,
+          unidadMedidaId: true,
+          activo: true,
+          categoria: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+            },
+          },
+          unidad_medida: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+              decimalesPermitidos: true,
+            },
           },
         },
-        unidad_medida: {
-          select: {
-            id: true,
-            codigo: true,
-            nombre: true,
-            decimalesPermitidos: true,
+      });
+
+      if (codigoCambio) {
+        /*
+         * Temporalmente utilizamos un usuario fijo.
+         *
+         * Cuando implementemos autenticacion y sesiones,
+         * este valor sera reemplazado por el usuario obtenido
+         * desde la sesion autenticada.
+         */
+        const usuarioId = 1;
+      
+        await tx.historial_codigo_producto.create({
+          data: {
+            productoId,
+            codigoAnterior: productoExistente.codigo,
+            codigoNuevo: codigo,
+            usuarioId,
           },
-        },
-      },
+        });
+      }
+
+      return productoActualizado;
     });
 
     return NextResponse.json({
@@ -387,6 +485,45 @@ export async function DELETE(
         {
           ok: false,
           message: "El producto ya esta inactivo",
+        },
+        { status: 409 }
+      );
+    }
+
+    /*
+     * Validamos dependencias operativas antes de permitir
+     * la desactivacion logica.
+     *
+     * No consultamos movimiento_inventario directamente porque
+     * este depende de producto_almacen.
+     *
+     * historial_codigo_producto es auditoria y no impide
+     * desactivar un producto.
+     */
+    const [productoAlmacenCount, transferenciaDetalleCount] =
+      await Promise.all([
+        prisma.producto_almacen.count({
+          where: {
+            productoId,
+          },
+        }),
+
+        prisma.transferencia_detalle.count({
+          where: {
+            productoId,
+          },
+        }),
+      ]);
+
+    if (
+      productoAlmacenCount > 0 ||
+      transferenciaDetalleCount > 0
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "No se puede desactivar el producto porque tiene dependencias, existencias o movimientos relacionados. Debe conservarse para garantizar la integridad y trazabilidad del sistema.",
         },
         { status: 409 }
       );
