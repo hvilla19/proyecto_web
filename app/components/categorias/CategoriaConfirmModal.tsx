@@ -43,14 +43,14 @@ export default function CategoriaConfirmModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Botón Cerrar X */}
-        <button8
+        <button
           type="button"
           onClick={onCerrar}
           disabled={eliminando}
           className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40"
         >
           <X className="h-4 w-4" />
-        </button8>
+        </button>
 
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
